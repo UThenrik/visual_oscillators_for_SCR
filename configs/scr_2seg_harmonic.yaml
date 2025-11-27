@@ -1,0 +1,9 @@
+dataset: scr_match_2seg
+
+actuation_dim: 4
+
+latent_dim: 10
+
+dynamics_type: harmonic1d
+
+n_epochs_warmup: 0

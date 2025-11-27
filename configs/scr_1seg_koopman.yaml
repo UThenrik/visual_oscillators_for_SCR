@@ -1,0 +1,9 @@
+dataset: scr_match_1seg
+
+actuation_dim: 2
+
+latent_dim: 8
+
+dynamics_type: koopman
+
+n_epochs_warmup: 0

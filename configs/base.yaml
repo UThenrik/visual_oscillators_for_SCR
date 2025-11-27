@@ -1,0 +1,78 @@
+# Base configuration for visual soft robot learning
+# This file contains default hyperparameters
+
+# ============================================================================
+# Dataset settings
+# ============================================================================
+dataset: scr_match_1seg
+resolution: 32
+
+# ============================================================================
+# Training settings
+# ============================================================================
+batch_size: 32
+epochs: 300
+train_val_ratio: 0.80  # 80% training, 20% validation
+
+# Learning rates
+lr_encoder: 1.0e-3
+lr_decoder: 1.0e-3
+lr_dynamics: 1.0e-3
+
+# Weight decay (L2 regularization)
+weight_decay_encoder: 1.0e-2
+weight_decay_decoder: 1.0e-2
+weight_decay_dynamics: 1.0e-2
+
+# Learning rate scheduler
+lr_scheduler_factor: 0.2
+lr_scheduler_patience: 100
+
+# Warmup settings
+n_epochs_warmup: 5
+warmup_factor: 0.1
+
+# ============================================================================
+# Model architecture
+# ============================================================================
+use_vae: true
+latent_dim: 8
+actuation_dim: 2
+num_actuation_delays: 4  # Number of delayed actuation states
+
+# Dynamics model type: "koopman" or "harmonic1d" or "harmonic2d_vel" or "harmonic2d_proj"
+dynamics_type: koopman
+harmonic_prediction_function: symplectic_euler  # "analytical", "euler", "symplectic_euler", "implicit_midpoint"
+harmonic_use_nonlinear_forcing: false
+harmonic_damping_type: rayleigh  # "full" or "rayleigh"
+
+# Attention decoder settings
+use_attention_decoder: false
+attention_downsample_factor: 1
+attention_feature_dim: 8
+background_token_value: 1.0
+gumbel_noise_strength: 0.0
+
+# ============================================================================
+# Loss weights
+# ============================================================================
+delta_t: 0.01667  # 1/60 seconds
+lam_o: 10.0         # Reconstruction loss weight
+lam_z: 0.1          # Dynamics loss weight
+lam_steady: 0.025   # Steady state loss weight
+lam_attn: 0.01      # Attention consistency loss weight
+
+lam_beta_start: 0.005
+lam_beta_end: 0.005
+lam_beta_schedule_epochs: 300
+
+# Attention position loss schedule
+lam_attn_pos: [0.01, 0.1]
+lam_attn_pos_change_epochs: [0, 5]
+
+# ============================================================================
+# Saving settings
+# ============================================================================
+save_model: true
+save_frequency: 25  # Save every N epochs
+

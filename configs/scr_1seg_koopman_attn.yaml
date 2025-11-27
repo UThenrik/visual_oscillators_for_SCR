@@ -1,0 +1,12 @@
+dataset: scr_match_1seg
+
+actuation_dim: 2
+
+latent_dim: 8
+
+dynamics_type: koopman
+
+n_epochs_warmup: 5
+background_token_value: 2.0
+
+use_attention_decoder: true

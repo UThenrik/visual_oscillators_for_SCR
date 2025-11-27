@@ -1,0 +1,11 @@
+dataset: scr_match_1seg
+
+actuation_dim: 2
+
+latent_dim: 8
+
+dynamics_type: harmonic2d_vel
+
+use_attention_decoder: true
+
+gumbel_noise_strength: 0.1
