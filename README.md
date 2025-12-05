@@ -20,6 +20,20 @@ for Soft Continuum Robots from Video</b></h2>
   </a>
 </p>
 
+# Content
+
+- **`configs/`** - Configuration files for different model variants (harmonic/koopman, with/without attention, 1-segment/2-segment)
+- **`data/`** - SCR video datasets (to be downloaded seperately)
+- **`Latent_dynamics_learning.ipynb`** - Main notebook for training koopman and oscillator networks
+- **`models.py`** - Model architecture definitions and functions
+- **`utils.py`** - Utility functions
+- **`results/`** - Trained model checkpoints, loss histories, and visualization figures
+- **`SCR_data_processing.ipynb`** - Notebook for preparing SCR datasets from videos and raw data
+# How to get the dataset
+
+Processed data (compatible with this repo) and raw data are available on Zenodo:  
+https://zenodo.org/records/17812071
+
 # How to Cite
 If you use this code or refer to our work, please cite the following:
 
@@ -33,12 +47,3 @@ If you use this code or refer to our work, please cite the following:
       url={https://arxiv.org/abs/2511.18322}, 
 }
 
-# Content
-
-- **`configs/`** - Configuration files for different model variants (harmonic/koopman, with/without attention, 1-segment/2-segment)
-- **`data/`** - SCR video datasets (to be downloaded seperately)
-- **`Latent_dynamics_learning.ipynb`** - Main notebook for training koopman and oscillator networks
-- **`models.py`** - Model architecture definitions and functions
-- **`utils.py`** - Utility functions
-- **`results/`** - Trained model checkpoints, loss histories, and visualization figures
-- **`SCR_data_processing.ipynb`** - Notebook for preparing SCR datasets from videos and raw data
