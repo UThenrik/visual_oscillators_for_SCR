@@ -7,12 +7,6 @@ import math
 
 from torch.nn.modules.loss import _Loss
 
-EPS = 1e-8
-
-def softplus_pos(x, min_val=1e-6):
-    """Softplus function with minimum value to ensure positivity"""
-    return F.softplus(x) + min_val
-
 def create_encoder(input_channels=1, latent_dim=16, is_vae=True, image_size=32):
     """Simple encoder architecture with 4x4 kernels and stride=2."""
     if image_size <= 32:
@@ -430,77 +424,6 @@ class AttentionBroadcastDecoder(nn.Module):
         
         return output
 
-def selective_attention_consistency_loss(obs_curr, obs_next, attn_curr, attn_next):
-    """Vectorized version with L2 norm across all channels, weighted by average activation."""
-    obs_diff = torch.abs(obs_next - obs_curr)
-    obs_diff_norm = torch.norm(obs_diff, dim=1, keepdim=True)
-    obs_diff_norm = obs_diff_norm / (obs_diff_norm.max() + 1e-8)
-    
-    attn_diff = torch.abs(attn_next - attn_curr)
-    attn_avg = (attn_curr + attn_next) / 2
-    attn_avg_per_map = attn_avg.mean(dim=(2, 3), keepdim=True)
-    weighted_attn_diff = attn_diff / (attn_avg_per_map + 1e-8)
-    consistency_loss = (weighted_attn_diff * (1 - obs_diff_norm)).mean()
-    return consistency_loss
-
-def attention_position_loss(oscillator_position, oscillator_velocity, attention_weights, attention_dot, delta_t=1.0):
-    """Sample attention at oscillator_position using grid_sample (differentiable)."""
-    batch, n_nodes, H, W = attention_weights.shape
-    attn = (attention_weights * 0.1 + attention_weights.detach() * 0.9).view(batch * n_nodes, 1, H, W)
-    pos = oscillator_position[..., [1, 0]].contiguous().view(batch * n_nodes, 1, 1, 2)
-    attn_at_pos = F.grid_sample(attn, pos, mode='bilinear', align_corners=True)
-    attn_at_pos = attn_at_pos.view(batch, n_nodes)
-    com_vel = attention_com_velocities(attention_weights, attention_dot)
-    pos_loss = ((1-attn_at_pos)**2).mean()
-    vel_loss = F.mse_loss(oscillator_velocity*delta_t, com_vel * delta_t)
-    total_loss = pos_loss + vel_loss*0
-    return total_loss
-
-def attention_velocity_loss_1d(oscillator_position, oscillator_velocity, attention_weights, attention_dot, delta_t=1.0, eps=1e-6):
-    batch, n_nodes = oscillator_velocity.shape
-    if n_nodes < 2:
-        return torch.tensor(0.0, device=oscillator_velocity.device, dtype=oscillator_velocity.dtype)
-    
-    com_pos = attention_com_positions(attention_weights)
-    com_vel = attention_com_velocities(attention_weights, attention_dot)
-
-    osc_pos_i = oscillator_position.unsqueeze(2)
-    osc_pos_j = oscillator_position.unsqueeze(1)
-    osc_rel_pos = osc_pos_i - osc_pos_j
-    rel_dist_osc = osc_rel_pos.abs().clamp(min=eps)
-
-    osc_vel_i = oscillator_velocity.unsqueeze(2)
-    osc_vel_j = oscillator_velocity.unsqueeze(1)
-    osc_rel_vel = osc_vel_i - osc_vel_j
-    osc_rel_vel_signed = (osc_rel_vel * osc_rel_pos) / rel_dist_osc
-    osc_disp = osc_rel_vel_signed * delta_t
-    
-    com_pos_i = com_pos.unsqueeze(2)
-    com_pos_j = com_pos.unsqueeze(1)
-    com_rel_pos = com_pos_i - com_pos_j
-    rel_dist_com = com_rel_pos.norm(dim=-1).clamp(min=eps)
-
-    com_vel_i = com_vel.unsqueeze(2)
-    com_vel_j = com_vel.unsqueeze(1)
-    com_rel_vel_vec = com_vel_i - com_vel_j
-    com_rel_dir = com_rel_pos / rel_dist_com.unsqueeze(-1)
-    com_rel_vel_signed = (com_rel_vel_vec * com_rel_dir).sum(dim=-1)
-    com_disp = com_rel_vel_signed * delta_t
-
-    rel_mean_vel_osc = delta_t*(torch.abs(osc_vel_i)+torch.abs(osc_vel_j))/2
-    rel_mean_vel_com = delta_t*(torch.abs(com_vel_i.norm(dim=-1))+torch.abs(com_vel_j.norm(dim=-1)))/2
-
-    osc_scaled = osc_disp / rel_mean_vel_osc
-    com_scaled = com_disp / rel_mean_vel_com
-
-    mask = ~torch.eye(n_nodes, dtype=torch.bool, device=oscillator_velocity.device)
-    osc_masked = osc_scaled[:, mask]
-    com_masked = com_scaled[:, mask]
-
-    loss = F.mse_loss(osc_masked.clamp(min=-1, max=1), com_masked.clamp(min=-1, max=1))
-    return loss
-
-
 def attention_velocity_loss(oscillator_position, oscillator_velocity, attention_weights, attention_dot, delta_t=1.0, eps=1e-6):
     batch, n_nodes_double = oscillator_velocity.shape
     n_nodes = n_nodes_double // 2
@@ -673,10 +596,6 @@ def vae_loss(recon_x, x, mu, logvar):
     kld = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
     return recon_loss, kld
 
-def ae_loss(recon_x, x):
-    recon_loss = nn.functional.mse_loss(recon_x, x)
-    return recon_loss
-
 
 class KoopmanModel(nn.Module):
 
@@ -728,12 +647,6 @@ class KoopmanModel(nn.Module):
 
 		return recon_loss, consistency_loss
 
-
-
-EPS = 1e-6
-
-def softplus_pos(x):
-    return torch.nn.functional.softplus(x) + EPS
 
 class FullyCoupledOscNet(nn.Module):
     """
@@ -797,32 +710,6 @@ class FullyCoupledOscNet(nn.Module):
             )
         else:
             self.control_to_state = None
-
-
-    def _apply_cholesky_constraints(self, U_raw):
-        """
-        Apply paper's Cholesky constraints to ensure positive definiteness.
-        U_ii = log(1 + e^(U_ii + ε1)) + ε2
-        where ε1 = 1e-6, ε2 = 2e-6
-        """
-        # Get upper triangular part
-        U = torch.triu(U_raw)
-        
-        # Apply the specific diagonal operation from the paper
-        diag_indices = torch.arange(self.n, device=U.device)
-        U_diag = U[diag_indices, diag_indices]
-        
-        # U_ii = log(1 + e^(U_ii + ε1)) + ε2
-        constrained_diag = torch.log(1 + torch.exp(U_diag + self.eps1)) + self.eps2
-        
-        # Replace diagonal with constrained values
-        U = U.clone()
-        U[diag_indices, diag_indices] = constrained_diag
-        
-        # Construct positive definite matrix: A = U^T @ U
-        A = U.T @ U
-        
-        return A
 
     def build_physical_coupling_matrix(self, U_raw, ground_raw=None):
         K_pair = F.softplus(U_raw)
@@ -921,76 +808,6 @@ class FullyCoupledOscNet(nn.Module):
         y_next = (Phi @ y.T).T + (Gamma @ forces.T).T
         return y_next
 
-    def step_pinv(self, y, u, dt):
-        """
-        Step dynamics forward using matrix exponential (ZOH) with pseudoinverse
-        y: [batch, 2n] state [x, v]
-        u: [batch, m_in] control input
-        Adds Kx0 to the control force.
-        """
-
-        A_sys, B_sys, K = self.build_continuous_AB()
-        n2 = A_sys.shape[0]
-        device = A_sys.device
-
-        # MLP -> external force
-        bu = self.control_to_state(u)  # [batch, n]
-
-        # Add Kx0 to the control force
-        kx0 = (K @ self.x0).unsqueeze(0)  # [1, n]
-        forces = bu + kx0  # [batch, n] + [1, n] -> [batch, n]
-
-        Phi = torch.matrix_exp(A_sys * dt)
-        eye = torch.eye(n2, device=device)
-
-        # Gamma = integral_0^dt exp(A t) dt B_sys
-        # Using pseudoinverse: Gamma = A^+ (Phi - I) B
-        Gamma = torch.linalg.pinv(A_sys) @ (Phi - eye) @ B_sys
-
-        # batch update
-        y_next = (Phi @ y.T).T + (Gamma @ forces.T).T
-        return y_next  
-
-
-    def step_euler(self, y, u, dt):
-        """
-        Step dynamics forward using simple Euler integration
-        y: [batch, 2n] state [x, v]
-        u: [batch, m_in] control input
-        Adds Kx0 to the control force.
-        """
-        x, v = y[:, :self.n], y[:, self.n:]
-        M_inv, K, D = self.give_Minv_KD()
-        
-        # Handle actuation
-        if self.control_to_state is not None and u is not None:
-            bu = self.control_to_state(u)  # [batch, n]
-        else:
-            # No actuation: zero force
-            batch_size = y.shape[0]
-            bu = torch.zeros(batch_size, self.n, device=y.device)
-        
-        # Add Kx0 to the control force
-        kx0 = (K @ self.x0).unsqueeze(0)  # [1, n]
-        bu = bu + kx0  # [batch, n] + [1, n] -> [batch, n]
-        
-        # Compute accelerations: a = M^{-1} (F - Kx - Dv + F_nl)
-        # Use learned M_inv directly (no inversion needed)
-        forces = bu - (K @ x.T).T - (D @ v.T).T  # [batch, n]
-        
-        # Add nonlinear forcing (Stölzle & Santina 2024)
-        if self.harmonic_use_nonlinear_forcing:
-            nonlinear_force = torch.tanh(self.W_raw @ x.T + self.b_raw.unsqueeze(1)).T
-            forces = forces + nonlinear_force
-        
-        a = (M_inv @ forces.T).T  # [batch, n] - use learned M_inv directly
-        
-        # Euler integration
-        x_next = x + dt * v
-        v_next = v + dt * a
-        
-        return torch.cat([x_next, v_next], dim=1)
-
     def step_symplectic_euler(self, y, u, dt):
         """
         Step dynamics forward using symplectic Euler integration
@@ -1026,48 +843,11 @@ class FullyCoupledOscNet(nn.Module):
         x_next = x + dt * v_next  # notice: uses updated v
         return torch.cat([x_next, v_next], dim=1)
 
-    def step_implicit_midpoint(self, y, u, dt):
-        """
-        Implicit midpoint integrator for linear system dy/dt = A y + B u.
-        Stable, second-order, and symplectic.
-        Adds Kx0 to the control force.
-        """
-        A_sys, B_sys, K = self.build_continuous_AB()
-        bu = self.control_to_state(u)  # [batch, n]
-        n2 = A_sys.shape[0]
-
-        # Add Kx0 to the control force
-        kx0 = (K @ self.x0).unsqueeze(0)  # [1, n]
-        forces = bu + kx0  # [batch, n] + [1, n] -> [batch, n]
-
-        I = torch.eye(n2, device=A_sys.device, dtype=A_sys.dtype)
-
-        # Left-hand side and right-hand side
-        LHS = I - 0.5 * dt * A_sys
-        RHS = (I + 0.5 * dt * A_sys) @ y.T + dt * (B_sys @ forces.T)
-
-        # Solve linear system for y_{k+1}
-        y_next = torch.linalg.solve(LHS, RHS).T  # [batch, 2n]
-        return y_next
-
-
     def rollout(self, x0, v0, u_seq, dt):
         y = torch.cat([x0, v0], dim=1)
         xs, vs = [], []
         for u in u_seq:
             y = self.step(y, u, dt)
-            xs.append(y[:, :self.n])
-            vs.append(y[:, self.n:])
-        xs = torch.stack(xs, dim=0)
-        vs = torch.stack(vs, dim=0)
-        return xs, vs
-    
-    def rollout_euler(self, x0, v0, u_seq, dt):
-        """Rollout using Euler integration instead of matrix exponential"""
-        y = torch.cat([x0, v0], dim=1)
-        xs, vs = [], []
-        for u in u_seq:
-            y = self.step_euler(y, u, dt)
             xs.append(y[:, :self.n])
             vs.append(y[:, self.n:])
         xs = torch.stack(xs, dim=0)
@@ -1096,17 +876,15 @@ class HarmonicOscillatorDynamics(nn.Module):
     def forward(self, z_t, z_dot_t, u_t, dt=1.0):
         y_t = torch.cat([z_t, z_dot_t], dim=1)
         if self.harmonic_prediction_function == "analytical":
-            y_tp1 = self.osc_net.step(y_t, u_t, dt)  # Use Euler integration with nonlinear forcing
-        elif self.harmonic_prediction_function == "euler":
-            y_tp1 = self.osc_net.step_euler(y_t, u_t, dt)  # Use Euler integration with nonlinear forcing
+            y_tp1 = self.osc_net.step(y_t, u_t, dt)
         elif self.harmonic_prediction_function == "symplectic_euler":
-            y_tp1 = self.osc_net.step_symplectic_euler(y_t, u_t, dt)  # Use Euler integration with nonlinear forcing
-        elif self.harmonic_prediction_function == "implicit_midpoint":
-            y_tp1 = self.osc_net.step_implicit_midpoint(y_t, u_t, dt)  
-        elif self.harmonic_prediction_function == "pinv":
-            y_tp1 = self.osc_net.step_pinv(y_t, u_t, dt)  
-        
-        # Use Euler integration with nonlinear forcing
+            y_tp1 = self.osc_net.step_symplectic_euler(y_t, u_t, dt)
+        else:
+            raise ValueError(
+                f"Unsupported harmonic_prediction_function: {self.harmonic_prediction_function}. "
+                "Use 'analytical' or 'symplectic_euler'."
+            )
+
         z_tp1 = y_tp1[:, :self.latent_dim]
         z_dot_tp1 = y_tp1[:, self.latent_dim:]
         return z_tp1, z_dot_tp1
