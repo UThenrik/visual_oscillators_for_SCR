@@ -1,7 +1,7 @@
 # visual_oscillators_for_SCR
 
 <p align="center">
-  <a href="https://doi.org/10.1109/LRA.2026.3703241" target="_blank">
+  <a href="https://ieeexplore.ieee.org/document/11560904" target="_blank">
     <img src="https://img.shields.io/badge/Publication-IEEE%20RA--L-blue?style=for-the-badge&logo=ieee" alt="IEEE RA-L Badge"/>
   </a>
   <a href="https://arxiv.org/abs/2511.18322" target="_blank">
@@ -13,13 +13,14 @@
 for Soft Continuum Robots from Video</b></h2>
 
 <p align="center">
-  <b>Accepted for publication in IEEE Robotics and Automation Letters (RA-L), June 2026</b><br>
+  <b>Published in IEEE Robotics and Automation Letters (RA-L), 2026</b><br>
+  <a href="https://ieeexplore.ieee.org/document/11560904">IEEE Xplore</a> &nbsp;|&nbsp;
   DOI: <a href="https://doi.org/10.1109/LRA.2026.3703241">10.1109/LRA.2026.3703241</a>
 </p>
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=i80H8erVISM" target="_blank">
-    <img src="https://img.youtube.com/vi/i80H8erVISM/hqdefault.jpg" alt="YouTube Video" style="width: 60%; max-width: 480px;">
+    <img src="https://img.youtube.com/vi/i80H8erVISM/maxresdefault.jpg" alt="YouTube Video" style="width: 80%; max-width: 720px; aspect-ratio: 16/9;">
   </a>
   <br>
   <a href="https://www.youtube.com/watch?v=i80H8erVISM" target="_blank">
@@ -44,16 +45,17 @@ https://zenodo.org/records/17812071
 
 # How to cite
 
-If you use this code or refer to our work, please cite the IEEE RA-L version once available at [https://doi.org/10.1109/LRA.2026.3703241](https://doi.org/10.1109/LRA.2026.3703241). Until then, cite the arXiv preprint:
+If you use this code or refer to our work, please cite:
 
 ```bibtex
-@misc{krauss2025learningvisuallyinterpretableoscillator,
-      title={Learning Visually Interpretable Oscillator Networks for Soft Continuum Robots from Video},
-      author={Henrik Krauss and Johann Licher and Naoya Takeishi and Annika Raatz and Takehisa Yairi},
-      year={2025},
-      eprint={2511.18322},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2511.18322},
+@ARTICLE{11560904,
+  author={Krauss, Henrik and Licher, Johann and Takeishi, Naoya and Raatz, Annika and Yairi, Takehisa},
+  journal={IEEE Robotics and Automation Letters},
+  title={Learning Visually Interpretable Oscillator Networks for Soft Continuum Robots from Video},
+  year={2026},
+  pages={1-8},
+  doi={10.1109/LRA.2026.3703241}
 }
 ```
+
+Paper: [https://ieeexplore.ieee.org/document/11560904](https://ieeexplore.ieee.org/document/11560904)
