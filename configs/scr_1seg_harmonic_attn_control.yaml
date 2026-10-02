@@ -1,0 +1,21 @@
+dataset: scr_match_1seg
+
+actuation_dim: 2
+
+latent_dim: 8
+
+dynamics_type: harmonic2d_vel
+
+use_attention_decoder: true
+
+#gumbel_noise_strength: 0.05
+
+num_actuation_delays: 1
+
+use_linear_control: false
+
+# options 2.2
+gumbel_noise_strength: 0.0
+lam_attn_pos: [0.01]
+lam_attn_pos_change_epochs: [0]
+lam_attn: 0.005      # Attention consistency loss weight

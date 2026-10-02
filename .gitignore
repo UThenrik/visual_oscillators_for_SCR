@@ -1,6 +1,15 @@
 # Data
+# Processed NPZs under data/scr_match2/ are committed.
 data/scr_match/
+data/scr_match2_CDC_rec/
+*.h5
+
+# Local / mistaken paths
 data/results/models/
+
+# Local paper drafts (not for this repo)
+/Control paper.pdf
+/Original paper.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

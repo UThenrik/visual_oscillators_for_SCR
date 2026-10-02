@@ -1,0 +1,24 @@
+# Ablation 2: RA-L-like loss weighting (lam_o=10, lam_z=0.1).
+dataset: scr_match_2seg
+
+actuation_dim: 4
+
+latent_dim: 10
+
+dynamics_type: harmonic2d_vel
+
+use_attention_decoder: true
+
+num_actuation_delays: 1
+
+use_linear_control: false
+
+epochs: 175
+
+lam_o: 10.0
+lam_z: 0.1
+
+gumbel_noise_strength: 0.0
+lam_attn_pos: [0.01]
+lam_attn_pos_change_epochs: [0]
+lam_attn: 0.005

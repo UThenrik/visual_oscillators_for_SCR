@@ -1,0 +1,17 @@
+dataset: scr_match_1seg
+
+actuation_dim: 2
+
+latent_dim: 8
+
+dynamics_type: mlp
+
+background_token_value: 2.0
+
+use_attention_decoder: true
+
+num_actuation_delays: 1
+
+use_linear_control: false
+
+mlp_neurons: 24

@@ -16,16 +16,31 @@ def save_model_and_results(
     epoch=None,
     save_figures=True
 ):
-    """Save model, training results, config, and figures to a directory."""
+    """
+    Save model, training results, config, and figures to a directory.
+    
+    Args:
+        save_dir (str): Directory to save all outputs
+        vae: VAE model
+        latent_dynamics: Latent dynamics model
+        config (dict): Configuration dictionary
+        loss_df (pd.DataFrame): Training loss dataframe
+        epoch (int, optional): Current epoch number (adds to filename if provided)
+        save_figures (bool): Whether to save figures as PDFs
+    """
     save_path = Path(save_dir)
     
+    # Create subfolder for epoch if provided
     if epoch is not None:
-        epoch_folder = f"epoch_{epoch:03d}"
+        epoch_folder = f"epoch_{epoch:03d}"  # Zero-pad to 3 digits
         save_path = save_path / epoch_folder
     
     save_path.mkdir(parents=True, exist_ok=True)
+    
+    # No suffix needed since we're using subfolders
     suffix = ""
     
+    # Extract system matrices if available (for harmonic oscillator models)
     M_inv, K, D = None, None, None
     W_raw, b_raw = None, None
     
@@ -36,11 +51,13 @@ def save_model_and_results(
         except Exception as e:
             print(f"⚠ Could not extract system matrices: {e}")
         
+        # Check for nonlinear forcing parameters
         if hasattr(latent_dynamics.osc_net, 'W_raw') and hasattr(latent_dynamics.osc_net, 'b_raw'):
             W_raw = latent_dynamics.osc_net.W_raw
             b_raw = latent_dynamics.osc_net.b_raw
             print("✓ Extracted nonlinear forcing matrices (W, b) from latent_dynamics")
     
+    # 1. Save model state dicts
     model_checkpoint = {
         'vae_state_dict': vae.state_dict(),
         'latent_dynamics_state_dict': latent_dynamics.state_dict(),
@@ -49,8 +66,10 @@ def save_model_and_results(
     torch.save(model_checkpoint, save_path / f"model_checkpoint{suffix}.pt")
     print(f"✓ Saved model checkpoint to {save_path / f'model_checkpoint{suffix}.pt'}")
     
+    # 2. Save config as JSON
     config_path = save_path / f"config{suffix}.json"
     with open(config_path, 'w') as f:
+        # Convert any non-serializable values to strings
         config_serializable = {}
         for key, value in config.items():
             if isinstance(value, (int, float, str, bool, list, dict, type(None))):
@@ -60,18 +79,22 @@ def save_model_and_results(
         json.dump(config_serializable, f, indent=2)
     print(f"✓ Saved config to {config_path}")
     
+    # 3. Save loss dataframe as CSV
     loss_df_path = save_path / f"loss_history{suffix}.csv"
     loss_df.to_csv(loss_df_path, index=False)
     print(f"✓ Saved loss history to {loss_df_path}")
     
+    # 4. Save figures as PDFs
     if save_figures:
         figures_dir = save_path / "figures"
         figures_dir.mkdir(exist_ok=True)
         
+        # Figure 1: Loss plots
         if not loss_df.empty:
             fig, axs = plt.subplots(3, 3, figsize=(16, 8))
             fig.suptitle("Training and Validation Losses", fontsize=16)
             
+            # Plot total loss
             axs[0, 0].plot(loss_df["epoch"], loss_df["t_total"], label="Train")
             axs[0, 0].plot(loss_df["epoch"], loss_df["v_total"], label="Val")
             axs[0, 0].set_title("Total Loss")
@@ -80,6 +103,7 @@ def save_model_and_results(
             axs[0, 0].set_yscale("log")
             axs[0, 0].legend()
             
+            # Plot static reconstruction loss
             axs[0, 1].plot(loss_df["epoch"], loss_df["t_static_recon"], label="Train")
             axs[0, 1].plot(loss_df["epoch"], loss_df["v_static_recon"], label="Val")
             axs[0, 1].set_title("Static Recon Loss")
@@ -88,6 +112,7 @@ def save_model_and_results(
             axs[0, 1].set_yscale("log")
             axs[0, 1].legend()
             
+            # Plot KL loss
             axs[0, 2].plot(loss_df["epoch"], loss_df["t_kl"], label="Train")
             axs[0, 2].plot(loss_df["epoch"], loss_df["v_kl"], label="Val")
             axs[0, 2].set_title("KL Loss")
@@ -96,6 +121,7 @@ def save_model_and_results(
             axs[0, 2].set_yscale("log")
             axs[0, 2].legend()
             
+            # Plot dynamic reconstruction loss
             axs[1, 0].plot(loss_df["epoch"], loss_df["t_dyn_recon"], label="Train")
             axs[1, 0].plot(loss_df["epoch"], loss_df["v_dyn_recon"], label="Val")
             axs[1, 0].set_title("Dynamic Recon Loss")
@@ -104,6 +130,7 @@ def save_model_and_results(
             axs[1, 0].set_yscale("log")
             axs[1, 0].legend()
             
+            # Plot dynamic loss
             axs[1, 1].plot(loss_df["epoch"], loss_df["t_dyn"], label="Train")
             axs[1, 1].plot(loss_df["epoch"], loss_df["v_dyn"], label="Val")
             axs[1, 1].set_title("Dynamic Loss")
@@ -112,6 +139,7 @@ def save_model_and_results(
             axs[1, 1].set_yscale("log")
             axs[1, 1].legend()
             
+            # Plot attention dynamics consistency loss
             axs[1, 2].plot(loss_df["epoch"], loss_df["t_dyn_attn"], label="Train")
             axs[1, 2].plot(loss_df["epoch"], loss_df["v_dyn_attn"], label="Val")
             axs[1, 2].set_title("Attention Consistency Loss")
@@ -120,6 +148,7 @@ def save_model_and_results(
             axs[1, 2].set_yscale("log")
             axs[1, 2].legend()
             
+            # Plot attention position loss
             axs[2, 0].plot(loss_df["epoch"], loss_df["t_attn_pos"], label="Train")
             axs[2, 0].plot(loss_df["epoch"], loss_df["v_attn_pos"], label="Val")
             axs[2, 0].set_title("Attention Position Loss")
@@ -128,6 +157,7 @@ def save_model_and_results(
             axs[2, 0].set_yscale("log")
             axs[2, 0].legend()
             
+            # Plot steady state loss
             axs[2, 1].plot(loss_df["epoch"], loss_df["t_steady"], label="Train")
             axs[2, 1].plot(loss_df["epoch"], loss_df["v_steady"], label="Val")
             axs[2, 1].set_title("Steady State Loss")
@@ -136,6 +166,7 @@ def save_model_and_results(
             axs[2, 1].set_yscale("log")
             axs[2, 1].legend()
             
+            # Hide unused subplot
             axs[2, 2].axis('off')
             
             plt.tight_layout()
@@ -144,6 +175,7 @@ def save_model_and_results(
             plt.close(fig)
             print(f"✓ Saved loss plots to {loss_plot_path}")
         
+        # Figure 2: System matrices (M_inv, K, D)
         if M_inv is not None and K is not None and D is not None:
             def plot_matrix(mat, title, ax=None, cmap="viridis"):
                 if ax is None:
@@ -163,6 +195,7 @@ def save_model_and_results(
             plt.close(fig)
             print(f"✓ Saved system matrices to {matrices_plot_path}")
         
+        # Figure 3: Nonlinear forcing matrices (if applicable)
         if W_raw is not None and b_raw is not None:
             fig, axs = plt.subplots(1, 2, figsize=(12, 4))
             
@@ -185,12 +218,30 @@ def save_model_and_results(
 
 
 def load_config(config_name, config_dir="configs", merge_with_base=True):
-    """Load configuration from YAML file, optionally merging with base config."""
+    """
+    Load configuration from YAML file, optionally merging with base config.
+    
+    Args:
+        config_name (str): Name of config file (with or without .yaml extension)
+        config_dir (str): Directory containing config files
+        merge_with_base (bool): If True and config_name is not "base", 
+                                merge with base.yaml first (default: True)
+    
+    Returns:
+        dict: Configuration dictionary
+    
+    Example:
+        >>> config = load_config("scr_2seg_harmonic")  # Auto-merges with base
+        >>> config = load_config("base")  # Loads base directly
+        >>> config = load_config("scr_2seg_harmonic", merge_with_base=False)  # No merge
+    """
     config_path = Path(config_dir)
     
+    # Handle different input formats
     if not config_name.endswith('.yaml'):
         config_name = config_name + '.yaml'
     
+    # Check if full path was provided
     if '/' in config_name or '\\' in config_name:
         config_file = Path(config_name)
     else:
@@ -206,12 +257,14 @@ def load_config(config_name, config_dir="configs", merge_with_base=True):
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
     
+    # Auto-merge with base config if requested and not loading base itself
     is_base = config_file.stem == 'base' or 'base' in str(config_file)
     if merge_with_base and not is_base:
         base_file = config_path / 'base.yaml'
         if base_file.exists():
             with open(base_file, 'r') as f:
                 base_config = yaml.safe_load(f)
+            # Merge: base config first, then override with specific config
             merged_config = base_config.copy()
             merged_config.update(config)
             config = merged_config
@@ -225,7 +278,21 @@ def load_config(config_name, config_dir="configs", merge_with_base=True):
     return config
 
 def merge_configs(base_config, override_config):
-    """Merge two configuration dictionaries, with override_config taking precedence."""
+    """
+    Merge two configuration dictionaries, with override_config taking precedence.
+    
+    Args:
+        base_config (dict): Base configuration
+        override_config (dict): Configuration to override base with
+    
+    Returns:
+        dict: Merged configuration
+    
+    Example:
+        >>> base = load_config("base")
+        >>> override = {"lr_encoder": 1e-4, "epochs": 500}
+        >>> config = merge_configs(base, override)
+    """
     merged = base_config.copy()
     merged.update(override_config)
     return merged
